@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using RestSharp.Authenticators.OAuth.Extensions;
 #if !WINDOWS_PHONE && !SILVERLIGHT && !PocketPC
 using RestSharp.Contrib;
@@ -21,6 +23,7 @@ namespace RestSharp.Authenticators.OAuth
 		public virtual string CallbackUrl { get; set; }
 		public virtual string Verifier { get; set; }
 		public virtual string SessionHandle { get; set; }
+        public virtual AsymmetricAlgorithm Key { get; set; }
 
 		public virtual OAuthSignatureMethod SignatureMethod { get; set; }
 		public virtual OAuthSignatureTreatment SignatureTreatment { get; set; }
@@ -75,7 +78,7 @@ namespace RestSharp.Authenticators.OAuth
 			AddAuthParameters(parameters, timestamp, nonce);
 
 			var signatureBase = OAuthTools.ConcatenateRequestElements(method, RequestTokenUrl, parameters);
-			var signature = OAuthTools.GetSignature(SignatureMethod, SignatureTreatment, signatureBase, ConsumerSecret);
+			var signature = OAuthTools.GetSignature(SignatureMethod, SignatureTreatment, signatureBase, ConsumerSecret, Key);
 
 			var info = new OAuthWebQueryInfo
 			{
@@ -132,7 +135,7 @@ namespace RestSharp.Authenticators.OAuth
 			AddAuthParameters(parameters, timestamp, nonce);
 
 			var signatureBase = OAuthTools.ConcatenateRequestElements(method, uri.ToString(), parameters);
-			var signature = OAuthTools.GetSignature(SignatureMethod, SignatureTreatment, signatureBase, ConsumerSecret, TokenSecret);
+			var signature = OAuthTools.GetSignature(SignatureMethod, SignatureTreatment, signatureBase, ConsumerSecret, TokenSecret, Key);
 
 			var info = new OAuthWebQueryInfo
 			{
@@ -247,9 +250,7 @@ namespace RestSharp.Authenticators.OAuth
 
 			var signatureBase = OAuthTools.ConcatenateRequestElements(method, url, parameters);
 
-			var signature = OAuthTools.GetSignature(
-				SignatureMethod, SignatureTreatment, signatureBase, ConsumerSecret, TokenSecret
-				);
+			var signature = OAuthTools.GetSignature(SignatureMethod, SignatureTreatment, signatureBase, ConsumerSecret, TokenSecret, Key);
 
 			var info = new OAuthWebQueryInfo
 			{

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -244,9 +245,10 @@ namespace RestSharp.Authenticators.OAuth
 		/// <param name="signatureBase">The signature base</param>
 		/// <param name="consumerSecret">The consumer key</param>
 		/// <returns></returns>
-		public static string GetSignature(OAuthSignatureMethod signatureMethod, string signatureBase, string consumerSecret)
+        public static string GetSignature(OAuthSignatureMethod signatureMethod, string signatureBase, string consumerSecret, 
+            AsymmetricAlgorithm key = null)
 		{
-			return GetSignature(signatureMethod, OAuthSignatureTreatment.Escaped, signatureBase, consumerSecret, null);
+			return GetSignature(signatureMethod, OAuthSignatureTreatment.Escaped, signatureBase, consumerSecret, null, key);
 		}
 
 		/// <summary>
@@ -259,9 +261,10 @@ namespace RestSharp.Authenticators.OAuth
 		/// <param name="signatureBase">The signature base</param>
 		/// <param name="consumerSecret">The consumer key</param>
 		/// <returns></returns>
-		public static string GetSignature(OAuthSignatureMethod signatureMethod, OAuthSignatureTreatment signatureTreatment, string signatureBase, string consumerSecret)
+		public static string GetSignature(OAuthSignatureMethod signatureMethod, OAuthSignatureTreatment signatureTreatment, string signatureBase, string consumerSecret,
+            AsymmetricAlgorithm key = null)
 		{
-			return GetSignature(signatureMethod, signatureTreatment, signatureBase, consumerSecret, null);
+            return GetSignature(signatureMethod, signatureTreatment, signatureBase, consumerSecret, null, key);
 		}
 
 		/// <summary>
@@ -273,26 +276,29 @@ namespace RestSharp.Authenticators.OAuth
 		/// <param name="consumerSecret">The consumer secret</param>
 		/// <param name="tokenSecret">The token secret</param>
 		/// <returns></returns>
-		public static string GetSignature(OAuthSignatureMethod signatureMethod, string signatureBase, string consumerSecret, string tokenSecret)
+        public static string GetSignature(OAuthSignatureMethod signatureMethod, string signatureBase, string consumerSecret, string tokenSecret, 
+            AsymmetricAlgorithm key = null)
 		{
-			return GetSignature(signatureMethod, OAuthSignatureTreatment.Escaped, consumerSecret, tokenSecret);
+			return GetSignature(signatureMethod, OAuthSignatureTreatment.Escaped, consumerSecret, tokenSecret, key);
 		}
 
-		/// <summary>
-		/// Creates a signature value given a signature base and the consumer secret and a known token secret.
-		/// </summary>
-		/// <seealso cref="http://oauth.net/core/1.0#rfc.section.9.2"/>
-		/// <param name="signatureMethod">The hashing method</param>
-		/// <param name="signatureTreatment">The treatment to use on a signature value</param>
-		/// <param name="signatureBase">The signature base</param>
-		/// <param name="consumerSecret">The consumer secret</param>
-		/// <param name="tokenSecret">The token secret</param>
-		/// <returns></returns>
-		public static string GetSignature(OAuthSignatureMethod signatureMethod,
+	    /// <summary>
+	    /// Creates a signature value given a signature base and the consumer secret and a known token secret.
+	    /// </summary>
+	    /// <seealso cref="http://oauth.net/core/1.0#rfc.section.9.2"/>
+	    /// <param name="signatureMethod">The hashing method</param>
+	    /// <param name="signatureTreatment">The treatment to use on a signature value</param>
+	    /// <param name="signatureBase">The signature base</param>
+	    /// <param name="consumerSecret">The consumer secret</param>
+	    /// <param name="tokenSecret">The token secret</param>
+	    /// <param name="privateKey">A signing certificate used for RSA-SHA1</param>
+	    /// <returns></returns>
+	    public static string GetSignature(OAuthSignatureMethod signatureMethod,
 			OAuthSignatureTreatment signatureTreatment,
 			string signatureBase,
 			string consumerSecret,
-			string tokenSecret)
+			string tokenSecret,
+            AsymmetricAlgorithm key = null)
 		{
 			if (tokenSecret.IsNullOrBlank())
 			{
@@ -309,9 +315,9 @@ namespace RestSharp.Authenticators.OAuth
 				case OAuthSignatureMethod.HmacSha1:
 				{
 					var crypto = new HMACSHA1();
-					var key = "{0}&{1}".FormatWith(consumerSecret, tokenSecret);
+					var k = "{0}&{1}".FormatWith(consumerSecret, tokenSecret);
 
-					crypto.Key = _encoding.GetBytes(key);
+					crypto.Key = _encoding.GetBytes(k);
 					signature = signatureBase.HashWith(crypto);
 
 					break;
@@ -323,6 +329,26 @@ namespace RestSharp.Authenticators.OAuth
 
 				    break;
 				}
+
+                case OAuthSignatureMethod.RsaSha1:
+			    {
+                    if(key == null) { throw new Exception("A key is required for RSA-SHA1 signing.");}
+                    var sha1 = new SHA1CryptoServiceProvider();
+                    byte[] dataBuffer = Encoding.ASCII.GetBytes(signatureBase);
+                    var cs = new CryptoStream(Stream.Null, sha1, CryptoStreamMode.Write);
+                    cs.Write(dataBuffer, 0, dataBuffer.Length);
+                    cs.Close();
+                    var formatter = new RSAPKCS1SignatureFormatter(key);
+                    formatter.SetHashAlgorithm("MD5");
+
+                    byte[] s = formatter.CreateSignature(sha1);
+
+                    signature = Convert.ToBase64String(s);
+
+
+			        break;
+			    }
+
 				default:
 #if PocketPC
 					throw new NotImplementedException("Only PlainText is currently supported.");
