@@ -91,7 +91,7 @@ namespace RestSharp.Authenticators.OAuth
             this.AddAuthParameters(parameters, timestamp, nonce);
 
             string signatureBase = OAuthTools.ConcatenateRequestElements(method, this.RequestTokenUrl, parameters);
-			var signature = OAuthTools.GetSignature(SignatureMethod, SignatureTreatment, signatureBase, ConsumerSecret);
+			var signature = OAuthTools.GetSignature(SignatureMethod, SignatureTreatment, signatureBase, ConsumerSecret, Key);
 
             OAuthWebQueryInfo info = new OAuthWebQueryInfo
                                      {
