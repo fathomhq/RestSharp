@@ -1,21 +1,17 @@
-#if !Smartphone
 using System;
-using System.Diagnostics;
-
-#endif
+using System.Runtime.Serialization;
 
 namespace RestSharp.Authenticators.OAuth
 {
-#if !Smartphone && !PocketPC
-	[DebuggerDisplay("{Name}:{Value}")]
+#if !SILVERLIGHT && !WINDOWS_PHONE && !WINDOWS_UWP
+    [Serializable]
 #endif
-#if !SILVERLIGHT && !WINDOWS_PHONE && !PocketPC
-	[Serializable]
+#if WINDOWS_UWP
+    [DataContract]
 #endif
-	internal class WebParameter : WebPair
-	{
-		public WebParameter(string name, string value) : base(name, value)
-		{
-		}
-	}
+    internal class WebParameter : WebPair
+    {
+        public WebParameter(string name, string value)
+            : base(name, value) { }
+    }
 }
